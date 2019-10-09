@@ -31,7 +31,7 @@ class TDC7201
     public:
 		/**
 		* Constructor.
-		@param[in] pinEnable   Mcu pin controlling TDC7201 enable input.
+		* @param[in] pinEnable   Mcu pin controlling TDC7201 enable input.
 		* @param[in] pinCs       Mcu pin controlling TDC7201 SPI CSB input.
 		* @param[in] clockFreqHz Clock frequency supplied at TDC7201 clock input, range [1..16] [MHz].
 		*/
@@ -44,7 +44,7 @@ class TDC7201
 
 		/**
 		* Setup measurement parameters.
-		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure
+		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure, [CSBx pin value]
 		* @param[in] cal2Periods Set calibration2 periods [2,10,20,40].
 		* @param[in] avgCycles   Set number of averaging cycles [1,2,4,8,16,32,64,128]. 
 		* @param[in] numStops    Set number of stop pulses [1..5].
@@ -55,7 +55,7 @@ class TDC7201
 
 		/**
 		* Setup stop mask.
-		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure
+		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure, [CSBx pin value]
 		* @param[in] stopMaskPs Duration of stop mask, in [ps]. Will be rounded to number of external
 		*						clock counts, so actual value used might be slightly different.
 		*/
@@ -63,7 +63,7 @@ class TDC7201
 
 		/**
 		* Setup overflow time.
-		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure
+		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure, [CSBx pin value]
 		* @param[in] overflowPs  Overflow time, in [ps]. If tof takes longer than overflowPs,
 		*						a timeout will occur.
 		* @remark Only functional for mode2, datasheet only describes registers for a clock counter stop mask.
@@ -72,21 +72,24 @@ class TDC7201
 
 		/**
 		* Start a new measurement.
+		* @param[in] pinCSBx Set which of the two TDC7201 timers to use for the measurement, [CSBx pin value]
 		*/
-		//void startMeasurement(const uint8_t timerNum);
+		void startMeasurement(const uint8_t pinCSBx);
 
 		/**
 		* Read measurement result.
 		* Caller must make sure sufficient time has elapsed for all pulses to occur before calling this function.
+		* @param[in]  pinCSBx Set which of the two TDC7201 timers to read from, [CSBx pin value]
 		* @param[in]  stop       Index of stop pulse to read time for, [1..numStops].
 		* @param[out] tof		Measured time-of-flight from start pulse to given stop pulse, or 0 when
 		*				      pulse wasn't recorded (didn't occur, or not within overflow time).
 		* @return		       True, when all parameters were valid and time-of-flight was retrieved.
 		*/
-		//bool readMeasurement(const uint8_t stop, uint64_t& tof, const uint8_t timerNum);
+		//bool readMeasurement(const uint8_t pinCSBx, uint8_t stop, uint64_t& tof);
+		
 		uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
-		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
+		//void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
     private:
 		uint8_t  m_pinEnable;	//< Mcu pin controlling TDC7201 enable input.
 		uint8_t  m_pinCSB1;		//< Mcu pin controlling TDC7201 SPI CSB1 input.
@@ -98,7 +101,7 @@ class TDC7201
 		uint32_t m_clkPeriodPs;	//< Clock period in [ps].
 		uint8_t  m_cal2Periods;	//< Calibration2, number of measuring clock periods, one of [2,10,20,40].
 		uint8_t  m_config1;		//< CONFIG1 register value, used to start measurement.
-		uint8_t  m_config2;		//< CONFIG2 register value, used to start measurement.
+		uint8_t  m_config2;		//< CONFIG2 register value.
 		uint8_t  m_mode;		//< Measurement mode [1,2].
 		uint8_t  m_numStops;	//< Number of stops per measurement.
 		int64_t  m_normLsb;		//< Cached normLsb value for tof calculation.
@@ -107,7 +110,7 @@ class TDC7201
 
 		//uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		//uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
-		//void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
+		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
 };
 
 #endif
