@@ -90,7 +90,8 @@ class TDC7201
 		uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
 		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
-		uint64_t  m_normLsb;		//< Cached normLsb value for tof calculation.
+		uint64_t m_normLsb;		//< Cached normLsb value for tof calculation.
+		
     private:
 		uint8_t  m_pinEnable;	//< Mcu pin controlling TDC7201 enable input.
 		uint8_t  m_pinCSB1;		//< Mcu pin controlling TDC7201 SPI CSB1 input.
@@ -112,7 +113,7 @@ class TDC7201
 		bool generateNormLSB(const uint8_t pinCSBx);
 		//uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		//uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
-		//void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
+		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
 };
 
 #endif

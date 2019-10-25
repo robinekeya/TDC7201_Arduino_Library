@@ -262,8 +262,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	// Stop mask is dependent on mode 2 and overflow so set it now.
 	if(mode == 2)
 		setupStopMask(pinCSBx, m_stopMaskPs);
-	
-
+		
 	return true;     
 }
 
@@ -415,7 +414,6 @@ bool TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	
 	return true;
 }
-
 
 uint8_t TDC7201::spiReadReg8(const uint8_t pinCSBx, const uint8_t addr)
 {
