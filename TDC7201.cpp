@@ -150,7 +150,7 @@ bool TDC7201::begin()
     if (   (spiReadReg8(m_pinCSB1, TDC7201_REG_TDCx_CONFIG2)  != TDC7201_REG_TDCx_CONFIG2_DEFAULTS)
         or (spiReadReg8(m_pinCSB1, TDC7201_REG_TDCx_INT_MASK) != TDC7201_REG_TDCx_INT_MASK_DEFAULTS))
     {
-		Serial.print("SPI comms error! Unnable to intialize TDC7210");
+		Serial.println("SPI comms error! Unnable to intialize TDC7201");
         return false;
     }
 
@@ -175,7 +175,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
     else if (cal2Periods == 20) config2 = TDC7201_REG_VAL_CONFIG2_CALIBRATION2_PERIODS_20 << TDC7201_REG_SHIFT_CONFIG2_CALIBRATION2_PERIODS;
     else if (cal2Periods == 40) config2 = TDC7201_REG_VAL_CONFIG2_CALIBRATION2_PERIODS_40 << TDC7201_REG_SHIFT_CONFIG2_CALIBRATION2_PERIODS;
     else{
-		Serial.print("Invalid calibration2 periods entered!");
+		Serial.println("Invalid calibration2 periods entered!");
 		return false;
 	}
     m_cal2Periods = cal2Periods;
@@ -208,7 +208,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 			config2 |= 0x7 << TDC7201_REG_SHIFT_CONFIG2_AVG_CYCLES;
 			break;
 		default:
-			Serial.print("Invalid number of averaging cycles entered for Multi-Cycle averaging");
+			Serial.println("Invalid number of averaging cycles entered for Multi-Cycle averaging");
 			return false;
 	}
 	*/
@@ -222,46 +222,52 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	} while (val <= TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MAX_VAL);
 	
 	if (val > TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MAX_VAL) {
-		Serial.print("Invalid number of averaging cycles entered for Multi-Cycle averaging");
+		Serial.println("Invalid number of averaging cycles entered for Multi-Cycle averaging");
 		return false;
 	}
 	
 	// Config2 Num Stops 
 	if ((numStops == 0) or (numStops > TDC7201_REG_VAL_CONFIG2_NUM_STOP_MAX)) {
-		Serial.print("Invalid number of Stops entered");
+		Serial.println("Invalid number of Stops entered");
 		return false;
 	}
-	
-	m_numStops = numStops;
 	config2 |= TDC7201_REG_VAL_CONFIG2_NUM_STOP(numStops) << TDC7201_REG_SHIFT_CONFIG2_NUM_STOP;
+	m_numStops = numStops;
 
 	// Config1 Mode
 	if ((mode < TDC7201_REG_VAL_CONFIG1_MEAS_MODE_MIN) or (mode > TDC7201_REG_VAL_CONFIG1_MEAS_MODE_MAX)) {
-		Serial.print("Invalid number of measuring mode entered");
+		Serial.println("Invalid measure mode entered");
 		return false;
-		}
-	m_mode = mode;
+	}
 	m_config1 = TDC7201_REG_VAL_CONFIG1_MEAS_MODE(mode) << TDC7201_REG_SHIFT_CONFIG1_MEAS_MODE;
-
-	/*
+	m_mode = mode;
+	
+	// Save config2 value here
+	m_config2 = config2;
+	
+	// write values to the TDCx_CONFIG registers
+	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG2, m_config2);
+	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, m_config1);
+	
+	// config1 and config2 values now exist so we can have everything we need to generate 
+	// an initial normLSB so lets do that
+	if (~generateNormLSB()){
+		Serial.println("normLSB not calculated");
+		return false;
+	}
+	
 	// Mode influences overflow, so update now.
 	setupOverflow(pinCSBx, m_overflowPs);
 	
 	// Stop mask is dependent on mode 2 and overflow so set it now.
 	if(mode == 2)
 		setupStopMask(pinCSBx, m_stopMaskPs);
-	*/
 	
-    // Config1 Start measurement
-    //??m_config1 |= bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS);?? Not sure why this is here. clear the start
-    // measurement bit here so that you dont have to later?
-
-	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG2, config2);
 
 	return true;     
 }
 
-void TDC7201::setupStopMask(const uint8_t pinCSBx, const uint64_t stopMaskPs)
+void TDC7201::setupStopMask(const uint8_t pinCSBx, const uint64_t stopMaskPs) //*** Function fails if m_overflowPs = 0
 {
 	/* DS Section 7.3.3.3 says Stop mask value must be less than the clock counter overflow value,
 	 * else no measurement will happen. If the value is greater, then lets set it to the CCO
@@ -315,7 +321,7 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 
 	uint16_t coarseOvf {0xFFFFu};   // For mode 1, maximum 227.08us
 	uint16_t clockOvf  {0xFFFFu};   // For mode 2, maximum 8.192ms
-	//uint16_t lowerBitsMask {0x00FF};   // bit mask for COARSE_CNTR_OV_L and CLOCK_CNTR_OV_L registers
+	
 
 	// overflowPS of 0 leaves the default overflow values of 0xFFFF for both the COARSE_CNTR_OV_H/L 
 	// and the CLOCK_CNTR_OV_H/L registers i.e. the max time out values
@@ -351,6 +357,61 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 	// Remember for mode changes
 	m_overflowPs = overflowPs;
 }
+
+void TDC7201::startMeasurement(const uint8_t pinCSBx)
+{
+    // Clear status
+    // According to Datasheet section 7.6.4, writing a 1 to any of the TDCx_INT_STATUS registers clears the interrupt status
+    spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_INT_STATUS,  bit(TDC7201_REG_SHIFT_INT_STATUS_MEAS_COMPLETE_FLAG)
+                                             | bit(TDC7201_REG_SHIFT_INT_STATUS_MEAS_STARTED_FLAG)
+                                             | bit(TDC7201_REG_SHIFT_INT_STATUS_CLOCK_CNTR_OVF_INT)
+                                             | bit(TDC7201_REG_SHIFT_INT_STATUS_COARSE_CNTR_OVF_INT)
+                                             | bit(TDC7201_REG_SHIFT_INT_STATUS_NEW_MEAS_INT) );
+
+    // Force recalculation of normLsb after measurement ended
+    m_normLsb = 0ull;
+    
+    // Start measurement
+    m_config1 |= bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS);
+    spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, m_config1);
+}
+
+bool TDC7201::generateNormLSB(const uint8_t pinCSBx)
+{
+	/* According to Datasheet section 7.4.1 the TDC7201 performs calibration measurements after every successful
+	 * measurement. If there in no stop signal or the measurement is aborted no calibration measurements are performed.
+	 * If the FORCE_CAL bit is set in the TDCx_CONFIG1 register then calibration measurements will be perfromed even
+	 * after an aborted meaurement.
+	 */
+	 
+	// generate mask to force calibration and start measurement
+	config1 = (m_config1	| bit(TDC7201_REG_SHIFT_CONFIG1_FORCE_CAL)
+							| bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS));
+	
+	// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
+	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
+	
+	// multiplier (2^shift) used to prevent rounding errors
+	const uint8_t shift = 20;
+	
+	const uint32_t calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
+	const uint32_t calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
+	
+	/* Datasheet section 7.4.2.1.1 says normLSB = (CLOCKperiod / calCount) and
+	 * calCount = (TDCx_CALIBRATION2 - TDCx_CALIBRATION1) / (CALIBRATION2_PERIODS - 1)
+	 * where CALIBRATION2_PERIODS is the number of calibration periods set in the TDCx_CONFIG2 register.
+	 * The TDCx_CALIBRATION registers are only updated after a calibration measurement hence the dummy measurement
+	 * above.
+	 */
+	// calCount scaled by 2^shift
+	const int64_t calCount = ( int64_t(calibration2-calibration1) << shift ) / int64_t(m_cal2Periods - 1);
+
+	// normLsb scaled by 2^shift, divided by calcount (scaled by 2^shift),
+	// so multiply by 2^(2*shift) to compensate for divider in calCount
+	m_normLsb  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
+	 
+}
+
 
 uint8_t TDC7201::spiReadReg8(const uint8_t pinCSBx, const uint8_t addr)
 {
