@@ -64,6 +64,8 @@ void setup() {
     Serial.println("TDC7201 Setup success");
   else
     Serial.println("TDC7201 Setup fail");
+  
+  Serial.print("normLSB: "); Serial.print(m_normLSB);
 
   TDC7201.setupStopMask(PIN_TDC7201_CSB1, stopMaskPs);
   printRegisters(PIN_TDC7201_CSB1, 4, 9);

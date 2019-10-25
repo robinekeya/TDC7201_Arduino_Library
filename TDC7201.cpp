@@ -251,7 +251,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	
 	// config1 and config2 values now exist so we can have everything we need to generate 
 	// an initial normLSB so lets do that
-	if (~generateNormLSB()){
+	if (~(generateNormLSB())){
 		Serial.println("normLSB not calculated");
 		return false;
 	}
@@ -319,8 +319,8 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 	 */
 
 
-	uint16_t coarseOvf {0xFFFFu};   // For mode 1, maximum 227.08us
-	uint16_t clockOvf  {0xFFFFu};   // For mode 2, maximum 8.192ms
+	uint16_t coarseOvf {0xFFFFu};   // For mode 1, maximum 227.08us @ 8MHz clock
+	uint16_t clockOvf  {0xFFFFu};   // For mode 2, maximum 8.192ms @ 8MHz clock
 	
 
 	// overflowPS of 0 leaves the default overflow values of 0xFFFF for both the COARSE_CNTR_OV_H/L 
@@ -390,6 +390,8 @@ bool TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	
 	// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
 	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
+	// wait for measurent to time out - no stops expected
+	delay(10);
 	
 	// multiplier (2^shift) used to prevent rounding errors
 	const uint8_t shift = 20;
@@ -408,8 +410,10 @@ bool TDC7201::generateNormLSB(const uint8_t pinCSBx)
 
 	// normLsb scaled by 2^shift, divided by calcount (scaled by 2^shift),
 	// so multiply by 2^(2*shift) to compensate for divider in calCount
+	// needs to be divided by shift to get normLSB in ps.
 	m_normLsb  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
-	 
+	
+	return true;
 }
 
 
