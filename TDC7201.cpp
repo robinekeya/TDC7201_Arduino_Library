@@ -413,7 +413,6 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	// needs to be divided by shift to get normLSB in ps.
 	m_normLsb  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
 	
-	return true;
 }
 
 uint8_t TDC7201::spiReadReg8(const uint8_t pinCSBx, const uint8_t addr)

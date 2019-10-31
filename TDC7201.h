@@ -86,7 +86,7 @@ class TDC7201
 		* @return		       True, when all parameters were valid and time-of-flight was retrieved.
 		*/
 		
-		void generateNormLSB(const uint8_t pinCSBx)
+		void generateNormLSB(const uint8_t pinCSBx);
 		/**
 		* Generate a normalized LSB and save to m_normLSB.
 		* m_normLSB value must be right shited by 20 to give the value in [ps] it is saved in this format to 
