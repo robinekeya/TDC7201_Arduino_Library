@@ -99,7 +99,11 @@ class TDC7201
 		uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
 		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
-		uint64_t m_normLsb;		//< Cached normLsb value for tof calculation.
+		uint64_t m_normLSB;		//< Cached normLsb value for tof calculation.
+		uint8_t  m_mode;		//< Measurement mode [1,2].
+		uint8_t  m_numStops;	//< Number of stops per me
+		uint8_t  m_cal2Periods;	//< Calibration2, number of measuring clock periods, one of [2,10,20,40].
+		uint64_t m_overflowPs;	//< Overflow time, in [ps].
 		
     private:
 		uint8_t  m_pinEnable;	//< Mcu pin controlling TDC7201 enable input.
@@ -110,19 +114,19 @@ class TDC7201
 		uint8_t  m_pinINTB1;	//< Mcu pin controlling TDC7201 Interrupt 1 input.
 		uint8_t  m_pinINTB2;	//< Mcu pin controlling TDC7201 Interrupt 2 input.
 		uint32_t m_clkPeriodPs;	//< Clock period in [ps].
-		uint8_t  m_cal2Periods;	//< Calibration2, number of measuring clock periods, one of [2,10,20,40].
+		//uint8_t  m_cal2Periods;	//< Calibration2, number of measuring clock periods, one of [2,10,20,40].
 		uint8_t  m_config1;		//< CONFIG1 register value, used to start measurement.
 		uint8_t  m_config2;		//< CONFIG2 register value.
-		uint8_t  m_mode;		//< Measurement mode [1,2].
-		uint8_t  m_numStops;	//< Number of stops per measurement.
-		//uint64_t  m_normLsb;	//< Cached normLsb value for tof calculation.
-		uint64_t m_overflowPs;	//< Overflow time, in [ps].
+		//uint8_t  m_mode;		//< Measurement mode [1,2].
+		//uint8_t  m_numStops;	//< Number of stops per measurement.
+		//uint64_t  m_normLSB;	//< Cached normLsb value for tof calculation.
+		//uint64_t m_overflowPs;	//< Overflow time, in [ps].TDC7201.m_overflowPs
 		uint64_t m_stopMaskPs;	//< Stop mask time, in [ps].
 		
-		void generateNormLSB(const uint8_t pinCSBx);
+		//void generateNormLSB(const uint8_t pinCSBx);
 		//uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		//uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);
-		void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
+		//void     spiWriteReg8(const uint8_t pinCSBx, const uint8_t addr, const uint8_t val)	;
 };
 
 #endif

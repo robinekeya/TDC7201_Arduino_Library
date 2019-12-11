@@ -251,10 +251,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	
 	// config1 and config2 values now exist so we can have everything we need to generate 
 	// an initial normLSB so lets do that
-	if (~(generateNormLSB())){
-		Serial.println("normLSB not calculated");
-		return false;
-	}
+	generateNormLSB(pinCSBx);
 	
 	// Mode influences overflow, so update now.
 	setupOverflow(pinCSBx, m_overflowPs);
@@ -368,8 +365,8 @@ void TDC7201::startMeasurement(const uint8_t pinCSBx)
                                              | bit(TDC7201_REG_SHIFT_INT_STATUS_COARSE_CNTR_OVF_INT)
                                              | bit(TDC7201_REG_SHIFT_INT_STATUS_NEW_MEAS_INT) );
 
-    // Force recalculation of normLsb after measurement ended
-    m_normLsb = 0ull;
+    // Force recalculation of normLSB after measurement ended
+    //m_normLSB = 0ull;
     
     // Start measurement
     m_config1 |= bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS);
@@ -384,6 +381,8 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	 * after an aborted meaurement.
 	 */
 	 
+	uint8_t config1{0u};
+	
 	// generate mask to force calibration and start measurement
 	config1 = (m_config1	| bit(TDC7201_REG_SHIFT_CONFIG1_FORCE_CAL)
 							| bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS));
@@ -391,7 +390,7 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
 	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
 	// wait for measurent to time out - no stops expected
-	delay(10);
+	delay(100);
 	
 	// multiplier (2^shift) used to prevent rounding errors
 	const uint8_t shift = 20;
@@ -408,10 +407,10 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	// calCount scaled by 2^shift
 	const int64_t calCount = ( int64_t(calibration2-calibration1) << shift ) / int64_t(m_cal2Periods - 1);
 
-	// normLsb scaled by 2^shift, divided by calcount (scaled by 2^shift),
+	// normLSB scaled by 2^shift, divided by calcount (scaled by 2^shift),
 	// so multiply by 2^(2*shift) to compensate for divider in calCount
 	// needs to be divided by shift to get normLSB in ps.
-	m_normLsb  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
+	m_normLSB  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
 	
 }
 

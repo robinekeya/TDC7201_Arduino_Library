@@ -1,4 +1,6 @@
 #include <TDC7201.h>
+#include <Arduino.h>
+#include <inttypes.h>
 
 // Connections
 //  TDC7200         AdaFruit Feather M0 pin #
@@ -34,12 +36,12 @@ void printRegisters(int timer=PIN_TDC7201_CSB1, int startReg=0, int stopReg=23) 
   
   for(int reg{startReg}; reg < stopReg+1; reg++){
     if(reg < 10){
-      Serial.print("Register ");Serial.print(reg);Serial.print(": ");
+      Serial.print("Register "); Serial.print(reg);Serial.print(": ");
       Serial.println(TDC7201.spiReadReg8(timer, reg), BIN);
       delay(100);
     }
     else{
-      Serial.print("Register ");Serial.print(reg);Serial.print(": ");
+      Serial.print("Register "); Serial.print(reg);Serial.print(": ");
       Serial.println(TDC7201.spiReadReg24(timer, reg), BIN);
       delay(100);
     }
@@ -65,7 +67,8 @@ void setup() {
   else
     Serial.println("TDC7201 Setup fail");
   
-  Serial.print("normLSB: "); Serial.print(m_normLSB);
+  double normLSB{static_cast<int>(TDC7201.m_normLSB)};
+  Serial.print("normLSB: "); Serial.println(normLSB, 0);
 
   TDC7201.setupStopMask(PIN_TDC7201_CSB1, stopMaskPs);
   printRegisters(PIN_TDC7201_CSB1, 4, 9);
