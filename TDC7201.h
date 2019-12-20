@@ -94,7 +94,7 @@ class TDC7201
 		* @param[in]  pinCSBx Set which of the two TDC7201 timers to generate the normLSB from, [CSBx pin value]
 		* @return		       True, when all parameters were valid and time-of-flight was retrieved.
 		*/
-		//bool readMeasurement(const uint8_t pinCSBx, uint8_t stop, uint64_t& tof);
+		bool readMeasurement(const uint8_t pinCSBx, uint8_t stop, uint64_t& tof);
 		
 		uint8_t  spiReadReg8(const uint8_t pinCSBx, const uint8_t addr);
 		uint32_t spiReadReg24(const uint8_t pinCSBx, const uint8_t addr);

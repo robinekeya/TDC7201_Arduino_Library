@@ -251,7 +251,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	
 	// config1 and config2 values now exist so we can have everything we need to generate 
 	// an initial normLSB so lets do that
-	generateNormLSB(pinCSBx);
+	// generateNormLSB(pinCSBx);
 	
 	// Mode influences overflow, so update now.
 	setupOverflow(pinCSBx, m_overflowPs);
@@ -316,9 +316,19 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 	uint16_t coarseOvf {0xFFFFu};   // For mode 1, maximum 227.08us @ 8MHz clock
 	uint16_t clockOvf  {0xFFFFu};   // For mode 2, maximum 8.192ms @ 8MHz clock
 	
+	// use calculated normalized LSB value if available, available if call to readMeasurement(); successful
+	// uint64_t normLSB {0};
+	uint64_t normLSB{0};
+	
+	if (m_normLSB)
+		normLSB = m_normLSB;
+	else 
+		normLSB = TDC7201_NOMINAL_LSB;
 
 	// overflowPS of 0 leaves the default overflow values of 0xFFFF for both the COARSE_CNTR_OV_H/L 
 	// and the CLOCK_CNTR_OV_H/L registers i.e. the max time out values
+	
+	
 	if (overflowPs)
 	{
 		if (m_mode == 1)
@@ -327,7 +337,7 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 			const uint8_t shift = 20;
 			
 			// Convert overflow value from ps to  number of ring oscillator ticks
-			const uint64_t ovf = overflowPs / ((m_normLSB >> shift) * TDC7201_RING_OSC_CELLS);
+			const uint64_t ovf = overflowPs / ((normLSB >> shift) * TDC7201_RING_OSC_CELLS);
 			
 			// Clip to upper bound.
 			if (ovf < 0xFFFFu)
@@ -345,7 +355,7 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 			// Clip to upper bound.
 			if (ovf < 0xFFFFu)
 			{
-				clockOvf = ovf;
+				clockOvf = ovf;printRegisters(PIN_TDC7201_CSB1, 0, 23);
 			}
 			spiWriteReg8(pinCSBx,TDC7201_REG_TDCx_CLOCK_CNTR_OVF_H, clockOvf >> 8);
 			spiWriteReg8(pinCSBx,TDC7201_REG_TDCx_CLOCK_CNTR_OVF_L, (clockOvf & TDC7201_REG_TDCx_LOWER_BITS_MASK));
@@ -371,6 +381,71 @@ void TDC7201::startMeasurement(const uint8_t pinCSBx)
     // Start measurement
     m_config1 |= bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS);
     spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, m_config1);
+}
+
+bool TDC7201::readMeasurement(const uint8_t pinCSBx, const uint8_t stop, uint64_t &tofOut)
+{
+	tofOut = 0ull;
+	// sanity check to see if number of stops specified in readMeasurement() matches that set in setupMeasurement()
+	if (stop > m_numStops)
+	{
+		Serial.println("In readMeasurement()");
+		Serial.println("Number of stops greater than the value set in the measurement configuration");
+		return false;
+	}
+
+	// multiplier (2^shift) used to prevent rounding errors
+	const uint8_t shift = 20;
+
+	// Speed optimize: Cache normLsb for multiple stop tof calculations
+	if (not m_normLSB)
+	{
+		const uint32_t calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
+		const uint32_t calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
+		
+		/* Datasheet section 7.4.2.1.1 says normLSB = (CLOCKperiod / calCount) and
+		* calCount = (TDCx_CALIBRATION2 - TDCx_CALIBRATION1) / (CALIBRATION2_PERIODS - 1)
+		* where CALIBRATION2_PERIODS is the number of calibration periods set in the TDCx_CONFIG2 register.
+		* The TDCx_CALIBRATION registers are only updated after a calibration measurement hence the dummy measurement
+		* above.
+		*/
+		// calCount scaled by 2^shift
+		const int64_t calCount = ( int64_t(calibration2-calibration1) << shift ) / int64_t(m_cal2Periods - 1);
+
+		// normLSB scaled by 2^shift, divided by calcount (scaled by 2^shift),
+		// so multiply by 2^(2*shift) to compensate for divider in calCount
+		// needs to be divided by shift to get normLSB in ps.
+		m_normLSB  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
+	}
+
+    switch (m_mode)
+    {
+        case 1:
+        {
+            const uint32_t timen = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_TIMEX(stop));          // TIME(n)
+            tofOut = ( static_cast<int64_t>(timen) * m_normLSB ) >> shift;
+            break;
+        }
+        case 2:
+        {
+            const uint32_t time1        = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_TIME1);                // TIME1
+            const uint32_t timen1       = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_TIMEX(stop + 1));      // TIME(n+1)
+            const uint32_t clockCountn  = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CLOCK_COUNTX(stop));   // CLOCK_COUNT(n)
+            tofOut = ( (static_cast<int64_t>(time1) - static_cast<int64_t>(timen1)) * m_normLSB ) >> shift;
+            tofOut += static_cast<int64_t>(clockCountn) * static_cast<int64_t>(m_clkPeriodPs);
+            break;
+        }
+        default:
+        { 
+        Serial.println("In readMeasurement()");
+		Serial.println("Invalid mode number");
+        return false;
+		}
+    }
+    // TOF for a pulses that didn't occur will be reported as all ones.
+    // If this is the case, return 0 as value.
+    if (not (~tofOut)) tofOut = 0ull;
+    return true;
 }
 
 void TDC7201::generateNormLSB(const uint8_t pinCSBx)
