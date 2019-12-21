@@ -80,7 +80,7 @@ void buttonISR()
 
 void setup() {
   int calibrationPeriods{40};
-  int averageCycles{0};
+  int averageCycles{0}; //for multicycle averaging only
   int numberOfStops{2};
   int measurementMode{2};
   uint64_t stopMaskPs{20};
