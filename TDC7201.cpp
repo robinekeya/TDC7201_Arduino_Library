@@ -139,7 +139,7 @@ bool TDC7201::begin()
     digitalWrite(m_pinEnable, HIGH);
     delay(TDC7201_ENABLE_T3_LDO_SET3_MS);
 
-    // -- Configure SPI
+    // -- Configure SPI TDC7201 Chip selects are active low
     digitalWrite(m_pinCSB1, HIGH);
     pinMode(m_pinCSB1, OUTPUT);
     digitalWrite(m_pinCSB2, HIGH);
@@ -181,7 +181,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
     m_cal2Periods = cal2Periods;
 
     // Config2 Avg Cycles
-/*	switch (avgCycles)
+	switch (avgCycles)
 	{
 		case 1:
 			config2 |= 0x0 << TDC7201_REG_SHIFT_CONFIG2_AVG_CYCLES;
@@ -211,8 +211,8 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 			Serial.println("Invalid number of averaging cycles entered for Multi-Cycle averaging");
 			return false;
 	}
-	*/
-	uint8_t val {TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MIN_VAL};
+	
+/*	uint8_t val {TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MIN_VAL};
 	do {
 		if ((1 << val) == avgCycles) { //(1 << val) can only equal 2^n
 			config2 |= val << TDC7201_REG_SHIFT_CONFIG2_AVG_CYCLES;
@@ -224,7 +224,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	if (val > TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MAX_VAL) {
 		Serial.println("Invalid number of averaging cycles entered for Multi-Cycle averaging");
 		return false;
-	}
+*/	}
 	
 	// Config2 Num Stops 
 	if ((numStops == 0) or (numStops > TDC7201_REG_VAL_CONFIG2_NUM_STOP_MAX)) {
@@ -355,7 +355,7 @@ void TDC7201::setupOverflow(const uint8_t pinCSBx, const uint64_t overflowPs)
 			// Clip to upper bound.
 			if (ovf < 0xFFFFu)
 			{
-				clockOvf = ovf;printRegisters(PIN_TDC7201_CSB1, 0, 23);
+				clockOvf = ovf;
 			}
 			spiWriteReg8(pinCSBx,TDC7201_REG_TDCx_CLOCK_CNTR_OVF_H, clockOvf >> 8);
 			spiWriteReg8(pinCSBx,TDC7201_REG_TDCx_CLOCK_CNTR_OVF_L, (clockOvf & TDC7201_REG_TDCx_LOWER_BITS_MASK));
@@ -376,7 +376,7 @@ void TDC7201::startMeasurement(const uint8_t pinCSBx)
                                              | bit(TDC7201_REG_SHIFT_INT_STATUS_NEW_MEAS_INT) );
 
     // Force recalculation of normLSB after measurement ended
-    //m_normLSB = 0ull;
+    m_normLSB = 0ull;
     
     // Start measurement
     m_config1 |= bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS);

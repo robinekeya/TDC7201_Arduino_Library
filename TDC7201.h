@@ -28,11 +28,13 @@
 
 class TDC7201
 {
-    public:
+	public:
 		/**
 		* Constructor.
 		* @param[in] pinEnable   Mcu pin controlling TDC7201 enable input.
-		* @param[in] pinCs       Mcu pin controlling TDC7201 SPI CSB input.
+		* @param[in] pinCSB1       Mcu pin controlling TDC7201 TDC1 chip select.
+		* @param[in] pinCSB2       Mcu pin controlling TDC7201 TDC2 chip select.
+		* @param[in] pinCSB2       Mcu pin reading TDC7201 TDC1 measurement start trigger.
 		* @param[in] clockFreqHz Clock frequency supplied at TDC7201 clock input, range [1..16] [MHz].
 		*/
 		TDC7201(const uint8_t pinEnable, const uint8_t pinCSB1, const uint8_t pinCSB2, const uint8_t pinTRIGG1,
