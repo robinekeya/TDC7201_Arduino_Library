@@ -183,7 +183,7 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
     // Config2 Avg Cycles
 	switch (avgCycles)
 	{
-		case 1:
+		case 1: // no averaging
 			config2 |= 0x0 << TDC7201_REG_SHIFT_CONFIG2_AVG_CYCLES;
 			break;
 		case 2:
@@ -224,8 +224,8 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	if (val > TDC7201_REG_VAL_CONFIG2_AVG_CYCLES_MAX_VAL) {
 		Serial.println("Invalid number of averaging cycles entered for Multi-Cycle averaging");
 		return false;
-*/	}
-	
+	}
+*/	
 	// Config2 Num Stops 
 	if ((numStops == 0) or (numStops > TDC7201_REG_VAL_CONFIG2_NUM_STOP_MAX)) {
 		Serial.println("Invalid number of Stops entered");
@@ -233,7 +233,8 @@ bool TDC7201::setupMeasurement(const uint8_t pinCSBx, const uint8_t cal2Periods,
 	}
 	config2 |= TDC7201_REG_VAL_CONFIG2_NUM_STOP(numStops) << TDC7201_REG_SHIFT_CONFIG2_NUM_STOP;
 	m_numStops = numStops;
-
+	
+	
 	// Config1 Mode
 	if ((mode < TDC7201_REG_VAL_CONFIG1_MEAS_MODE_MIN) or (mode > TDC7201_REG_VAL_CONFIG1_MEAS_MODE_MAX)) {
 		Serial.println("Invalid measure mode entered");

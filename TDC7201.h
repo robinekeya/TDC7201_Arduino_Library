@@ -48,7 +48,7 @@ class TDC7201
 		* Setup measurement parameters.
 		* @param[in] pinCSBx Set which of the two TDC7201 timers to configure, [CSBx pin value]
 		* @param[in] cal2Periods Set calibration2 periods [2,10,20,40].
-		* @param[in] avgCycles   Set number of averaging cycles [1,2,4,8,16,32,64,128]. 
+		* @param[in] avgCycles   Set number of averaging cycles [(1,2,4,8,16,32,64,128] set to 1 for no averaging 
 		* @param[in] numStops    Set number of stop pulses [1..5].
 		* @param[in] mode		Set measurement mode [1,2]. Mode 1 is for measurements <500 [ns].
 		* @return				True, when all parameters were valid and setup succeeded.
