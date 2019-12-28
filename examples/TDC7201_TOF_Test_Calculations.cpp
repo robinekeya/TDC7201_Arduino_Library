@@ -27,8 +27,8 @@
 int main()
 {
     uint8_t shift = 20;
-    uint32_t cal2 = 21121;
-    uint32_t cal1 = 2110;
+    uint32_t cal2 = 22676;
+    uint32_t cal1 = 2270;
     uint32_t cal2T = 10;
     uint64_t clock = (1.0 / 8.0E6) / 1.0E-12;
     uint64_t calcount = (uint64_t(cal2 - cal1) << shift) / (uint64_t(cal2T - 1));

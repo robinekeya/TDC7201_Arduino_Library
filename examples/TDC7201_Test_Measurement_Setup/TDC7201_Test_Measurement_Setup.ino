@@ -35,20 +35,22 @@ constexpr uint8_t PIN_M0_BUTTON{15}; // MCU wired push button
 static  TDC7201 TDC7201(PIN_TDC7201_ENABLE, PIN_TDC7201_CSB1, PIN_TDC7201_CSB2, PIN_TDC7201_TIMER1_TRIG,
                         PIN_TDC7201_TIMER2_TRIG, PIN_TDC7201_TIMER1_INT, PIN_TDC7201_TIMER2_INT, 8000000);
 
-static int TDCx_CSB{PIN_TDC7201_CSB2};
-static int TDCx_TIMER_TRIG{PIN_TDC7201_TIMER2_TRIG};
-static int TDCx_TIMER_INT{PIN_TDC7201_TIMER2_INT}; // active low
-static int calibrationPeriods{40};
-static int averageCycles{1}; // for multicycle averaging only
-static int numberOfStops{4};
-static int measurementMode{1};
+// Set up variables for the TDC7201 class member functions check driver code for usage
+static int TDCx_CSB{PIN_TDC7201_CSB2}; // Chip select pin
+static int TDCx_TIMER_TRIG{PIN_TDC7201_TIMER2_TRIG}; // timer start trigger pin
+static int TDCx_TIMER_INT{PIN_TDC7201_TIMER2_INT}; // timer results interrupt pin active low
+static int calibrationPeriods{10}; // number of calibration periods for calculating TDC7201 LSB
+static int averageCycles{1}; // multicycle averaging only, set to 1 for no averaging
+static int numberOfStops{2}; // number of stops
+static int measurementMode{2}; // measurment mode
+
+// declare some interrupt flags
 volatile boolean flag1, flag2, flag3;
 
 
 // define fuction to print TDCx registers
 void printRegisters(int timer=PIN_TDC7201_CSB1, int startReg=0, int stopReg=22)
 {
-  
   for(int reg{startReg}; reg < stopReg+1; reg++){
     if(reg < 10){
       Serial.print("Register "); Serial.print(reg);Serial.print(": ");
@@ -57,7 +59,7 @@ void printRegisters(int timer=PIN_TDC7201_CSB1, int startReg=0, int stopReg=22)
     }
     else{ 
       Serial.print("Register "); Serial.print(reg);Serial.print(": ");
-      Serial.println(TDC7201.spiReadReg24(timer, reg), BIN);
+      Serial.println(TDC7201.spiReadReg24(timer, reg+6), BIN); // +6 so that index aligns with hex addresses
       //delay(100);
     }
   }
@@ -67,23 +69,31 @@ void printRegisters(int timer=PIN_TDC7201_CSB1, int startReg=0, int stopReg=22)
 void startMeasurement(int TDCx_chipSelect = PIN_TDC7201_CSB1, int calibrationPeriods = 20, int averageCycles = 1, int numberOfStops = 1, int measurementMode = 1)
 {
   // setup TDC7201
-  if(TDC7201.setupMeasurement(TDCx_chipSelect, calibrationPeriods, averageCycles, numberOfStops, measurementMode))
-    Serial.println("TDC7201 Setup success");
+  if(~TDC7201.setupMeasurement(TDCx_chipSelect, calibrationPeriods, averageCycles, numberOfStops, measurementMode))
+    TDC7201.startMeasurement(TDCx_chipSelect); // start measurement on TDC setup success
   else
-    Serial.println("TDC7201 Setup fail");
+    Serial.println("TDC7201 Setup fail - no measurement");
+}
 
-  // start actual measurment
-  TDC7201.startMeasurement(TDCx_chipSelect);    
+// define wrapper to setup and generate a normalized LSB
+void generateNormLSB(int TDCx_chipSelect = PIN_TDC7201_CSB1, int calibrationPeriods = 20, int averageCycles = 1, int numberOfStops = 1, int measurementMode = 1)
+{
+  // setup TDC7201
+  if(~TDC7201.setupMeasurement(TDCx_chipSelect, calibrationPeriods, averageCycles, numberOfStops, measurementMode))
+    TDC7201.generateNormLSB(TDCx_chipSelect); // generate normLSB on TDC setup success
+  else
+    Serial.println("TDC7201 Setup fail - no normLSB");
 }
     
 // define interrupt service routines for push button and timer triggers
 void buttonISR()
-{// mostly button debounce code
+{
+  // mostly button debounce code
   static unsigned long last_interrupt_time = 0;
   unsigned long interrupt_time = millis();
   // If interrupts come faster than 200ms, assume it's a bounce and ignore
   if (interrupt_time - last_interrupt_time > 250)
-  {//actual code to be executed by ISR
+  {//actual ISR code
     flag1 = true;
   }
   last_interrupt_time = interrupt_time;
@@ -100,7 +110,7 @@ void timerTrig2ISR()
 }
 
 void setup() 
-{ // Check driver code for usage notes
+{ 
   /* int TDCx_CSB{PIN_TDC7201_CSB2};
   int TDCx_TIMER_TRIG{PIN_TDC7201_TIMER2_TRIG};
   int TDCx_TIMER_INT{PIN_TDC7201_TIMER2_INT}; // active low
@@ -119,12 +129,7 @@ void setup()
   else
     Serial.println("TDC7201 Initialization Fail");
   
-  /*/ setup TDC7201
-  if(TDC7201.setupMeasurement(PIN_TDC7201_CSB1, calibrationPeriods, averageCycles, numberOfStops, measurementMode))
-    Serial.println("TDC7201 Setup success");
-  else
-    Serial.println("TDC7201 Setup fail");
-  */
+  // setup TDC stop mask
   TDC7201.setupStopMask(TDCx_CSB, stopMaskPs);
   printRegisters(TDCx_CSB, 0, 22);
   
@@ -148,8 +153,10 @@ void loop()
  if (flag2){
   //digitalWrite(PIN_M0_LED, flag1);
   //delay(500);
+  
   Serial.println("Timer 1 start triggered");
   printRegisters(TDCx_CSB, 0, 22);
+  generateNormLSB(TDCx_CSB, calibrationPeriods, averageCycles, numberOfStops, measurementMode);
   double normLSB{static_cast<int>(TDC7201.m_normLSB)};
   Serial.print("normLSB: "); Serial.println(normLSB, 0);
   flag2 = false;
@@ -168,6 +175,7 @@ void loop()
   double normLSB{static_cast<int>(TDC7201.m_normLSB)};
   Serial.print("normLSB: "); Serial.println(normLSB, 0);
   startMeasurement(TDCx_CSB, calibrationPeriods, averageCycles, numberOfStops, measurementMode);
+  //generateNormLSB(TDCx_CSB, calibrationPeriods, averageCycles, numberOfStops, measurementMode);
   flag1 = false;
   //delay(200);
  } 

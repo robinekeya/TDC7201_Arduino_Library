@@ -400,23 +400,8 @@ bool TDC7201::readMeasurement(const uint8_t pinCSBx, const uint8_t stop, uint64_
 
 	// Speed optimize: Cache normLsb for multiple stop tof calculations
 	if (not m_normLSB)
-	{
-		const uint32_t calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
-		const uint32_t calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
-		
-		/* Datasheet section 7.4.2.1.1 says normLSB = (CLOCKperiod / calCount) and
-		* calCount = (TDCx_CALIBRATION2 - TDCx_CALIBRATION1) / (CALIBRATION2_PERIODS - 1)
-		* where CALIBRATION2_PERIODS is the number of calibration periods set in the TDCx_CONFIG2 register.
-		* The TDCx_CALIBRATION registers are only updated after a calibration measurement hence the dummy measurement
-		* above.
-		*/
-		// calCount scaled by 2^shift
-		const int64_t calCount = ( int64_t(calibration2-calibration1) << shift ) / int64_t(m_cal2Periods - 1);
-
-		// normLSB scaled by 2^shift, divided by calcount (scaled by 2^shift),
-		// so multiply by 2^(2*shift) to compensate for divider in calCount
-		// needs to be divided by shift to get normLSB in ps.
-		m_normLSB  = (uint64_t(m_clkPeriodPs) << (2*shift)) / calCount;
+	{ // save a normLSB value to m_normLSB if one does not exist already
+		generateNormLSB(const uint8_t pinCSBx);
 	}
 
     switch (m_mode)
@@ -438,8 +423,8 @@ bool TDC7201::readMeasurement(const uint8_t pinCSBx, const uint8_t stop, uint64_
         }
         default:
         { 
-        Serial.println("In readMeasurement()");
-		Serial.println("Invalid mode number");
+        Serial.print("In readMeasurement()");
+		Serial.println(" Invalid mode number");
         return false;
 		}
     }
@@ -456,23 +441,30 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 	 * If the FORCE_CAL bit is set in the TDCx_CONFIG1 register then calibration measurements will be perfromed even
 	 * after an aborted meaurement.
 	 */
-	 
+	
 	uint8_t config1{0u};
-	
-	// generate mask to force calibration and start measurement
-	config1 = (m_config1	| bit(TDC7201_REG_SHIFT_CONFIG1_FORCE_CAL)
-							| bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS));
-	
-	// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
-	spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
-	// wait for measurent to time out - no stops expected
-	delay(100);
 	
 	// multiplier (2^shift) used to prevent rounding errors
 	const uint8_t shift = 20;
 	
-	const uint32_t calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
-	const uint32_t calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
+	uint32_t calibration1{spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1)};
+	uint32_t calibration2{spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2)};
+	
+	// check if there are calibration results in the calibration registers
+	if (!(calibration1 | calibration2))
+	{// generate mask to force calibration and start measurement
+		config1 = (m_config1	| bit(TDC7201_REG_SHIFT_CONFIG1_FORCE_CAL)
+								| bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS));
+	
+		// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
+		spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
+		// wait for measurent to time out - no stops expected
+		delay(100);
+	}
+	
+	calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
+	calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
+	
 	
 	/* Datasheet section 7.4.2.1.1 says normLSB = (CLOCKperiod / calCount) and
 	 * calCount = (TDCx_CALIBRATION2 - TDCx_CALIBRATION1) / (CALIBRATION2_PERIODS - 1)
