@@ -42,7 +42,7 @@ static int TDCx_TIMER_INT{PIN_TDC7201_TIMER2_INT}; // timer results interrupt pi
 static int calibrationPeriods{10}; // number of calibration periods for calculating TDC7201 LSB
 static int averageCycles{1}; // multicycle averaging only, set to 1 for no averaging
 static int numberOfStops{2}; // number of stops
-static int measurementMode{2}; // measurment mode
+static int measurementMode{1}; // measurment mode
 
 // declare some interrupt flags
 volatile boolean flag1, flag2, flag3;
@@ -84,6 +84,15 @@ void generateNormLSB(int TDCx_chipSelect = PIN_TDC7201_CSB1, int calibrationPeri
   else
     Serial.println("TDC7201 Setup fail - no normLSB");
 }
+
+// define wrapper function to read and print a TOF measurement
+void readPrintMeasurement(int TDCx_chipSelect, int stopNum)
+{
+  uint64_t tofOut{0};
+  TDC7201.readMeasurement(TDCx_chipSelect, stopNum, tofOut);
+  double TOF{static_cast<int>(tofOut)};
+  Serial.print("TOF_: "); Serial.print(stopNum, 0); Serial.println(TOF, 0);
+}
     
 // define interrupt service routines for push button and timer triggers
 void buttonISR()
@@ -111,14 +120,6 @@ void timerTrig2ISR()
 
 void setup() 
 { 
-  /* int TDCx_CSB{PIN_TDC7201_CSB2};
-  int TDCx_TIMER_TRIG{PIN_TDC7201_TIMER2_TRIG};
-  int TDCx_TIMER_INT{PIN_TDC7201_TIMER2_INT}; // active low
-  int calibrationPeriods{40};
-  int averageCycles{1}; // for multicycle averaging only
-  int numberOfStops{2};
-  int measurementMode{2};
-  */
   uint64_t stopMaskPs{20};
   delay(2500); // delay to allow bringing up the serial monitor
   Serial.begin(9600);
@@ -144,8 +145,6 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(PIN_M0_BUTTON), buttonISR, RISING); // buttonISR sets flag1
   
   //pinMode(PIN_M0_LED, OUTPUT);
-
-  
 }
 
 void loop() 
@@ -159,6 +158,7 @@ void loop()
   generateNormLSB(TDCx_CSB, calibrationPeriods, averageCycles, numberOfStops, measurementMode);
   double normLSB{static_cast<int>(TDC7201.m_normLSB)};
   Serial.print("normLSB: "); Serial.println(normLSB, 0);
+  readPrintMeasurement(TDCx_CSB, 1);
   flag2 = false;
   //digitalWrite(PIN_M0_LED, flag1);
   //delay(1000);

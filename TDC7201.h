@@ -121,8 +121,8 @@ class TDC7201
 		uint8_t  m_config2;		//< CONFIG2 register value.
 		//uint8_t  m_mode;		//< Measurement mode [1,2].
 		//uint8_t  m_numStops;	//< Number of stops per measurement.
-		//uint64_t  m_normLSB;	//< Cached normLsb value for tof calculation.
-		//uint64_t m_overflowPs;	//< Overflow time, in [ps].TDC7201.m_overflowPs
+		//uint64_t  m_normLSB;	//< Cached normLsb value for tof calculation right shift 20 to get value in [ps].
+		//uint64_t m_overflowPs;	//< Overflow time, in [ps].
 		uint64_t m_stopMaskPs;	//< Stop mask time, in [ps].
 		
 		//void generateNormLSB(const uint8_t pinCSBx);

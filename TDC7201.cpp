@@ -395,13 +395,13 @@ bool TDC7201::readMeasurement(const uint8_t pinCSBx, const uint8_t stop, uint64_
 		return false;
 	}
 
-	// multiplier (2^shift) used to prevent rounding errors
+	// multiplier (2^shift) to prevent rounding errors
 	const uint8_t shift = 20;
 
 	// Speed optimize: Cache normLsb for multiple stop tof calculations
 	if (not m_normLSB)
 	{ // save a normLSB value to m_normLSB if one does not exist already
-		generateNormLSB(const uint8_t pinCSBx);
+		generateNormLSB(pinCSBx);
 	}
 
     switch (m_mode)
@@ -456,15 +456,19 @@ void TDC7201::generateNormLSB(const uint8_t pinCSBx)
 		config1 = (m_config1	| bit(TDC7201_REG_SHIFT_CONFIG1_FORCE_CAL)
 								| bit(TDC7201_REG_SHIFT_CONFIG1_START_MEAS));
 	
+		/* Datasheet section 7.4.3, " If no START signal is received, the timer waits indefinitely for a START signal to arrive.
+		 * So TDC7201 needs at the least a start signal in order to do a dummy measurement
+		 */
+		
 		// perform a dummy measurement with no stops to generate results for TDCx_CALIBRATION registers
 		spiWriteReg8(pinCSBx, TDC7201_REG_TDCx_CONFIG1, config1);
 		// wait for measurent to time out - no stops expected
 		delay(100);
 	}
-	
+	 
+	// read the calibration results into calibration1/2 variables  
 	calibration1 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION1);
 	calibration2 = spiReadReg24(pinCSBx, TDC7201_REG_TDCx_CALIBRATION2);
-	
 	
 	/* Datasheet section 7.4.2.1.1 says normLSB = (CLOCKperiod / calCount) and
 	 * calCount = (TDCx_CALIBRATION2 - TDCx_CALIBRATION1) / (CALIBRATION2_PERIODS - 1)
