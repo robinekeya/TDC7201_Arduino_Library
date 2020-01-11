@@ -24,7 +24,9 @@
 #ifndef SETUP_H
 #define SETUP_H
 
+#include "TDC7201.h"
 #include <inttypes.h>
+#include <Arduino.h>
 
 /*===========================================================================*/
 /* Adafruit M0 constants.                                                    */
@@ -43,23 +45,26 @@
 //  CSB1            14
 //  INT2            21
 
-constexpr uint8_t PIN_EVM_OSC_ENABLE{0};      // EVM Oscillator enable
-constexpr uint8_t PIN_TDC7201_ENABLE{1};      // TDC7201 device enable
-constexpr uint8_t PIN_TDC7201_TIMER1_INT{5};    // TDC7201 clock 1 measurement results interrupt
-constexpr uint8_t PIN_TDC7201_TIMER1_TRIG{6};   // TDC7201 clock 1 measurement start trigger
-constexpr uint8_t PIN_EVM_DTG_TRIG{9};        // EVM Data gather trigger
-constexpr uint8_t PIN_EVM_MSP_START{10};      // EVM Combined mode start
-constexpr uint8_t PIN_TDC7201_TIMER2_TRIG{11};    // TDC7201 clock 2 measurement start trigger
-constexpr uint8_t PIN_TDC7201_CSB2{12};       // TDC7201 Chip select 2
-constexpr uint8_t PIN_TDC7201_CSB1{14};       // TDC7201 Chip select 1
-constexpr uint8_t PIN_TDC7201_TIMER2_INT{21};   // TDC7201 clock 2 measurement results interrupt
+constexpr uint8_t PIN_EVM_OSC_ENABLE{0};       // EVM Oscillator enable
+constexpr uint8_t PIN_TDC7201_ENABLE{1};       // TDC7201 device enable
+constexpr uint8_t PIN_TDC7201_TIMER1_INT{5};   // TDC7201 clock 1 measurement results interrupt
+constexpr uint8_t PIN_TDC7201_TIMER1_TRIG{6};  // TDC7201 clock 1 measurement start trigger
+constexpr uint8_t PIN_EVM_DTG_TRIG{9};         // EVM Data gather trigger
+constexpr uint8_t PIN_EVM_MSP_START{10};       // EVM Combined mode start
+constexpr uint8_t PIN_TDC7201_TIMER2_TRIG{11}; // TDC7201 clock 2 measurement start trigger
+constexpr uint8_t PIN_TDC7201_CSB2{12};        // TDC7201 Chip select 2
+constexpr uint8_t PIN_TDC7201_CSB1{14};        // TDC7201 Chip select 1
+constexpr uint8_t PIN_TDC7201_TIMER2_INT{21};  // TDC7201 clock 2 measurement results interrupt
 
-constexpr uint8_t PIN_M0_LED{13}; // MCU built in LED
+constexpr uint8_t PIN_M0_LED{13};    // MCU built in LED
 constexpr uint8_t PIN_M0_BUTTON{15}; // MCU wired push button
 
 /*===========================================================================*/
 /* External declarations.                                                    */
 /*===========================================================================*/
+
+// declare TDC7201 instance
+extern TDC7201 TDC7201_1;
 
 // forward declaration for function to print TDCx registers
 void printRegisters(int timer, int startReg, int stopReg);

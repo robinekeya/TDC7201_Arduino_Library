@@ -1,7 +1,7 @@
 /*
  * TDC7201.cpp
  * 
- * Copyright 2019 robin <robin@robin-XPS-13-9365>
+ * Copyright 2019 robin <robin.ekeya@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
